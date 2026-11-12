@@ -93,3 +93,30 @@
     if node is not None:
       fragments = node.template_fragments()
       reveal_type(fragments) # N: Revealed type is "list[selectolax.lexbor.LexborNode]"
+
+- case: html_parser_extract_tables
+  main: |
+    from selectolax.lexbor import LexborHTMLParser
+    parser = LexborHTMLParser("")
+    tables = parser.extract_tables()
+    reveal_type(tables) # N: Revealed type is "list[selectolax.table_extraction.ExtractedTable]"
+    table = tables[0]
+    reveal_type(table.caption) # N: Revealed type is "str"
+    reveal_type(table.rows) # N: Revealed type is "list[selectolax.table_extraction.TableRow]"
+    reveal_type(table.rows[0].cells) # N: Revealed type is "list[str]"
+    reveal_type(table.rows[0].section) # N: Revealed type is "str"
+    reveal_type(table.header_rows) # N: Revealed type is "list[selectolax.table_extraction.TableRow]"
+    reveal_type(table.warnings) # N: Revealed type is "list[selectolax.table_extraction.TableWarning]"
+    warning = table.warnings[0]
+    reveal_type(warning.code) # N: Revealed type is "str"
+    reveal_type(warning.row) # N: Revealed type is "int | None"
+
+- case: table_extraction_module_imports
+  main: |
+    from selectolax.table_extraction import ExtractedTable, TableRow, TableWarning, extract_tables
+    from selectolax.lexbor import LexborHTMLParser
+    parser = LexborHTMLParser("")
+    root = parser.root
+    if root is not None:
+      result = extract_tables(root)
+      reveal_type(result) # N: Revealed type is "list[selectolax.table_extraction.ExtractedTable]"

@@ -2,6 +2,24 @@ from collections.abc import Iterator
 from enum import IntFlag
 from typing import NoReturn, TypeVar, overload
 
+from selectolax.table_extraction import ExtractedTable, TableRow, TableWarning
+
+__all__ = [
+    "ExtractedTable",
+    "LexborAttributes",
+    "LexborCSSSelector",
+    "LexborDocumentOptions",
+    "LexborHTMLParser",
+    "LexborNode",
+    "LexborSelector",
+    "SelectolaxError",
+    "TableRow",
+    "TableWarning",
+    "create_tag",
+    "extract_html_comment",
+    "parse_fragment",
+]
+
 _DefaultT = TypeVar("_DefaultT")
 
 LEXBOR_VERSION_MAJOR: int
@@ -1347,6 +1365,18 @@ class LexborHTMLParser:
         -------
         bool
             ``True`` when a match exists.
+        """
+
+    def extract_tables(self) -> list[ExtractedTable]:
+        """Extract every ``<table>`` in the document as rectangular records.
+
+        Rows are ordered ``thead`` -> ``tbody`` -> ``tfoot`` and padded to the
+        same width. ``rowspan``/``colspan`` cells occupy the grid positions
+        they cover, with empty strings in the covered placeholders, and nested
+        tables are extracted independently. The DOM is read but never
+        modified. Returns an empty list when no tables are present, and
+        recoverable structural problems are reported on each table's
+        ``warnings`` rather than interrupting the other tables.
         """
 
     def template_fragments(self) -> list[LexborNode]:

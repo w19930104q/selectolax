@@ -1344,3 +1344,67 @@ Parse HTML forms and extract input data.
 
     Textarea fields:
       message: Hello there!
+
+Extracting tables as CSV-ready records
+--------------------------------------
+
+``LexborHTMLParser.extract_tables()`` renders every ``<table>`` as a fixed-width
+grid of strings, resolving ``rowspan``/``colspan``, section order
+(``thead`` -> ``tbody`` -> ``tfoot``), captions and nested tables. The DOM is
+only read, and structural problems are reported as warnings rather than
+raising.
+
+.. code-block:: python
+
+    import csv
+    import io
+
+    from selectolax.lexbor import LexborHTMLParser
+
+    html = """
+    <table>
+      <caption>商品清单</caption>
+      <thead>
+        <tr><th rowspan="2">商品</th><th colspan="2">规格</th></tr>
+        <tr><th>颜色</th><th>尺寸</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>衬衫</td><td>白</td><td>L</td></tr>
+        <tr><td>裤子</td><td colspan="2">均码</td></tr>
+      </tbody>
+    </table>
+    """
+
+    tables = LexborHTMLParser(html).extract_tables()
+    table = tables[0]
+
+    print(table.caption)
+    for row in table.rows:
+        print(row.section, row.cells)
+    print(table.header_rows[0].cells)
+
+    # Each row is padded to the same width, so the result is directly CSV-able.
+    buffer = io.StringIO()
+    csv.writer(buffer).writerows(row.cells for row in table.rows)
+    print(buffer.getvalue())
+
+**Output:**
+
+.. code-block:: text
+
+    商品清单
+    thead ['商品', '规格', '']
+    thead ['', '颜色', '尺寸']
+    tbody ['衬衫', '白', 'L']
+    tbody ['裤子', '均码', '']
+    ['商品', '规格', '']
+    商品,规格,
+    ,颜色,尺寸
+    衬衫,白,L
+    裤子,均码,
+
+Each returned object is an ``ExtractedTable`` with ``caption``, ``rows``,
+``header_rows`` and ``warnings``. A row is a ``TableRow`` (``section`` plus
+``cells``); recoverable problems such as an invalid ``rowspan`` are
+``TableWarning`` objects carrying a stable ``code`` and row/column locators.
+An empty document or one without tables returns an empty list.

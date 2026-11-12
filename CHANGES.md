@@ -1,5 +1,22 @@
 # selectolax Changelog
 
+# Unreleased
+
+- Add `LexborHTMLParser.extract_tables()` for turning every `<table>` into
+  CSV-compatible rectangular records. Each result exposes `caption`, `rows`,
+  `header_rows` and `warnings`: rows are emitted in
+  `thead` -> `tbody` -> `tfoot` order and padded to the same width,
+  `rowspan`/`colspan` cells occupy the grid positions they cover with empty
+  strings in the placeholders, nested tables are extracted independently
+  without leaking their cells into the outer table, and the parsed DOM is
+  never modified. Documents without tables return an empty list; recoverable
+  structural problems (invalid or oversized spans, multiple captions, cells
+  outside a row) produce locatable `TableWarning` objects instead of
+  interrupting the other tables. The supporting dataclasses
+  (`ExtractedTable`, `TableRow`, `TableWarning`) live in the new
+  `selectolax.table_extraction` module and are re-exported from
+  `selectolax.lexbor`. All existing parser and node APIs are unchanged.
+
 # Version 1.0.2
 
 Bugfix release for 1.0.1.

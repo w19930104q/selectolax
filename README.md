@@ -106,6 +106,49 @@ assert len(results) == 1
 assert results[0].text() == "lexbor is AwesOme"
 ```
 
+### Extracting tables as CSV-ready records
+
+`extract_tables()` turns every `<table>` into rectangular, CSV-compatible
+records without hand-rolling CSS walks. Rows come out in
+`thead` -> `tbody` -> `tfoot` order, `rowspan`/`colspan` cells land in the
+grid positions they actually cover (empty strings fill the placeholders),
+nested tables are extracted independently, and the parsed DOM is never
+modified. Malformed tables produce locatable `warnings` instead of aborting
+the other tables.
+
+```python
+import csv
+import io
+
+from selectolax.lexbor import LexborHTMLParser
+
+html = """
+<table>
+  <caption>季度销售</caption>
+  <thead>
+    <tr><th rowspan="2">商品</th><th colspan="2">季度</th></tr>
+    <tr><th>Q1</th><th>Q2</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>苹果</td><td>10</td><td>20</td></tr>
+  </tbody>
+</table>
+"""
+
+table = LexborHTMLParser(html).extract_tables()[0]
+print(table.caption)
+# 季度销售
+for row in table.rows:
+    print(row.section, row.cells)
+# thead ['商品', '季度', '']
+# thead ['', 'Q1', 'Q2']
+# tbody ['苹果', '10', '20']
+
+# Every row has the same width, so it feeds straight into the csv module.
+buffer = io.StringIO()
+csv.writer(buffer).writerows(row.cells for row in table.rows)
+```
+
 * [More examples](https://selectolax.readthedocs.io/en/latest/examples.html)
 
 ## Simple Benchmark

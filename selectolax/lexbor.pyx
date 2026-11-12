@@ -25,6 +25,30 @@ include "lexbor/util.pxi"
 include "lexbor/node_remove.pxi"
 include "lexbor/fragment_lookup.pxi"
 
+# Re-exported so callers can import the table-extraction dataclasses together
+# with the parser: ``from selectolax.lexbor import ExtractedTable``.
+from selectolax.table_extraction import (
+    ExtractedTable,
+    TableRow,
+    TableWarning,
+)
+
+__all__ = [
+    "ExtractedTable",
+    "LexborAttributes",
+    "LexborCSSSelector",
+    "LexborDocumentOptions",
+    "LexborHTMLParser",
+    "LexborNode",
+    "LexborSelector",
+    "SelectolaxError",
+    "TableRow",
+    "TableWarning",
+    "create_tag",
+    "extract_html_comment",
+    "parse_fragment",
+]
+
 
 class LexborDocumentOptions(IntFlag):
     """Parser options for the Lexbor document.
@@ -1204,6 +1228,55 @@ cdef class LexborHTMLParser:
         if node is None:
             return False
         return node.css_matches(selector)
+
+    def extract_tables(self):
+        """Extract every ``<table>`` in the document as rectangular records.
+
+        Unlike a hand-rolled ``css("tr td")`` walk, this understands the HTML
+        table model: rows come out in ``thead`` -> ``tbody`` -> ``tfoot``
+        order, every row is padded to the same width, ``rowspan`` and
+        ``colspan`` cells land in the grid positions they actually cover
+        (with empty strings filling the covered placeholders), and a table
+        nested inside a cell is extracted on its own rather than leaking its
+        rows into the outer table. The parsed DOM is only read, never
+        modified.
+
+        Returns
+        -------
+        list of ExtractedTable
+            One entry per table in document order (a nested table follows its
+            parent table), or an empty list when the document contains no
+            tables. Each entry has:
+
+            * ``caption`` (str): text of the first ``<caption>``, or ``""``;
+            * ``rows`` (list of TableRow): all grid rows, each with a
+              ``section`` (``"thead"``/``"tbody"``/``"tfoot"``) and a
+              fixed-width ``cells`` list of strings;
+            * ``header_rows`` (list of TableRow): the ``rows`` entries whose
+              section is ``"thead"``, for building CSV headers;
+            * ``warnings`` (list of TableWarning): recoverable structural
+              problems, each with a stable ``code`` and row/column/tag/
+              attribute locators. A bad table never aborts the other tables.
+
+        Examples
+        --------
+        >>> parser = LexborHTMLParser(
+        ...     "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        ...     "<tbody><tr><td>1</td><td rowspan='2'>2</td></tr>"
+        ...     "<tr><td>3</td></tr></tbody></table>"
+        ... )
+        >>> table = parser.extract_tables()[0]
+        >>> table.header_rows[0].cells
+        ['A', 'B']
+        >>> [row.cells for row in table.rows]
+        [['A', 'B'], ['1', '2'], ['3', '']]
+        """
+        from selectolax.table_extraction import extract_tables as _extract_tables
+
+        cdef LexborNode node = self.root
+        if node is None:
+            return []
+        return _extract_tables(node)
 
     def template_fragments(self):
         """Return the content of every ``<template>`` in the document, as fragments.
